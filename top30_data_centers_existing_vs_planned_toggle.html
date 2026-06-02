@@ -1,0 +1,181 @@
+
+<h2 class="sr-only">Stacked bar chart of top 30 countries by data center count, with toggle to hide US for better comparison of remaining countries</h2>
+
+<style>
+.chart-note { font-size: 11px; color: var(--color-text-tertiary); line-height: 1.6; margin-top: 10px; }
+.legend { display: flex; gap: 20px; margin-bottom: 14px; flex-wrap: wrap; font-size: 12px; color: var(--color-text-secondary); align-items: center; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+.top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.toggle-btn { font-size: 12px; padding: 5px 14px; border: 0.5px solid var(--color-border-secondary); border-radius: 20px; background: transparent; color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+.toggle-btn.active { background: var(--color-background-danger); color: var(--color-text-danger); border-color: var(--color-border-danger); }
+.toggle-btn i { font-size: 14px; }
+.scale-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+.chart-wrap { position: relative; width: 100%; overflow-x: auto; }
+</style>
+
+<div style="padding: 0.5rem 0;">
+
+<div class="top-bar">
+  <div class="legend">
+    <span><span class="legend-dot" style="background:#185FA5;"></span>Existing (operational)</span>
+    <span><span class="legend-dot" style="background:#9FE1CB;border:0.5px solid #1D9E75;"></span>Planned / under construction (est.)</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span class="scale-badge" id="scale-label">Full scale (incl. US)</span>
+    <button class="toggle-btn" id="us-toggle" onclick="toggleUS()">
+      <i class="ti ti-eye-off" aria-hidden="true"></i> Hide US
+    </button>
+  </div>
+</div>
+
+<div class="chart-wrap" id="chart-wrap">
+  <canvas id="dc30chart" role="img" aria-label="Stacked bar chart of top 30 countries by data center count, showing existing and planned facilities."></canvas>
+</div>
+
+<p class="chart-note">Existing figures: Cloudscene / Cargoson, Nov 2025. Planned estimates derived from Synergy Research Group (Q1 2025); US figures from Axios/Data Center Map (~3,000 planned, Feb 2026); APAC pipeline from Cushman &amp; Wakefield (H2 2025); European market reports (JLL, DevelopmentAid, 2025–2026). Country-level planned figures for ranks 10–30 are estimates — treat as directional, not precise.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const allCountries = [
+  'United States','Germany','United Kingdom','China','Canada','France',
+  'Australia','Netherlands','Russia','Japan','India','Italy','Mexico',
+  'Poland','Spain','Brazil','Singapore','Switzerland','Sweden','South Korea',
+  'Hong Kong','Belgium','Austria','Ukraine','Ireland','Denmark','Finland',
+  'Norway','Argentina','Turkey'
+];
+const allExisting = [
+  5427,529,523,449,337,322,314,298,251,222,
+  183,168,168,144,144,142,138,121,95,92,
+  88,81,68,58,55,50,48,47,46,35
+];
+const allPlanned = [
+  3000,110,145,200,85,95,120,75,30,90,
+  160,40,55,38,70,65,80,28,45,55,
+  30,22,18,12,30,18,35,20,15,10
+];
+
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const existingColor = '#185FA5';
+const plannedColor = isDark ? '#5DCAA5' : '#9FE1CB';
+const plannedBorder = '#1D9E75';
+const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+const labelColor = isDark ? '#B4B2A9' : '#5F5E5A';
+
+let showUS = true;
+let myChart = null;
+
+function buildChart(countries, existing, planned) {
+  const wrap = document.getElementById('chart-wrap');
+  const barW = 26;
+  const chartW = Math.max(680, countries.length * (barW + 10) + 80);
+  wrap.style.overflowX = chartW > 680 ? 'auto' : 'hidden';
+
+  const old = document.getElementById('dc30chart');
+  old.remove();
+  const canvas = document.createElement('canvas');
+  canvas.id = 'dc30chart';
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', 'Stacked bar chart of data centers by country');
+  canvas.style.width = chartW + 'px';
+  canvas.style.height = '420px';
+  wrap.appendChild(canvas);
+
+  if (myChart) { myChart.destroy(); myChart = null; }
+
+  myChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: countries,
+      datasets: [
+        {
+          label: 'Existing (operational)',
+          data: existing,
+          backgroundColor: existingColor,
+          borderWidth: 0,
+          borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 3, bottomRight: 3 },
+          borderSkipped: 'bottom',
+        },
+        {
+          label: 'Planned / under construction (est.)',
+          data: planned,
+          backgroundColor: plannedColor,
+          borderColor: plannedBorder,
+          borderWidth: 0.5,
+          borderRadius: { topLeft: 3, topRight: 3, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: 'bottom',
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: isDark ? '#2C2C2A' : '#fff',
+          borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)',
+          borderWidth: 1,
+          titleColor: isDark ? '#D3D1C7' : '#2C2C2A',
+          bodyColor: isDark ? '#B4B2A9' : '#5F5E5A',
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              const val = ctx.parsed.y;
+              const total = existing[ctx.dataIndex] + planned[ctx.dataIndex];
+              const pct = ((val / total) * 100).toFixed(0);
+              const suffix = ctx.datasetIndex === 1 ? ' (est.)' : '';
+              return ` ${ctx.dataset.label}: ${val.toLocaleString()}${suffix} — ${pct}% of total`;
+            },
+            afterBody: items => {
+              const i = items[0].dataIndex;
+              const total = existing[i] + planned[i];
+              const growthPct = Math.round((planned[i] / existing[i]) * 100);
+              return ['', ` Total (incl. planned): ${total.toLocaleString()}`, ` Pipeline growth: +${growthPct}%`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: labelColor, font: { size: 11 }, maxRotation: 45, minRotation: 35, autoSkip: false },
+          grid: { display: false },
+          border: { color: gridColor }
+        },
+        y: {
+          stacked: true,
+          ticks: {
+            color: labelColor,
+            font: { size: 11 },
+            callback: v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v,
+          },
+          grid: { color: gridColor },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function toggleUS() {
+  showUS = !showUS;
+  const btn = document.getElementById('us-toggle');
+  const label = document.getElementById('scale-label');
+
+  if (showUS) {
+    btn.innerHTML = '<i class="ti ti-eye-off" aria-hidden="true"></i> Hide US';
+    btn.classList.remove('active');
+    label.textContent = 'Full scale (incl. US)';
+    buildChart(allCountries, allExisting, allPlanned);
+  } else {
+    btn.innerHTML = '<i class="ti ti-eye" aria-hidden="true"></i> Show US';
+    btn.classList.add('active');
+    label.textContent = 'Excluding US — rest of world detail';
+    buildChart(allCountries.slice(1), allExisting.slice(1), allPlanned.slice(1));
+  }
+}
+
+buildChart(allCountries, allExisting, allPlanned);
+</script>

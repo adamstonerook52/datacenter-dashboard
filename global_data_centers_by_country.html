@@ -1,0 +1,198 @@
+
+<h2 class="sr-only">Top 100 countries by number of data centers, with percentage of global total</h2>
+
+<style>
+.dc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dc-table th { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 0.5px solid var(--color-border-secondary); padding: 8px 10px; text-align: left; position: sticky; top: 0; background: var(--color-background-primary); z-index: 2; }
+.dc-table th.num { text-align: right; }
+.dc-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: middle; }
+.dc-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dc-table tr:hover td { background: var(--color-background-secondary); }
+.dc-table .rank { color: var(--color-text-secondary); font-size: 12px; width: 32px; }
+.dc-table .country-name { font-weight: 500; }
+.dc-table .region-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 400; }
+.bar-wrap { width: 100px; display: inline-block; vertical-align: middle; }
+.bar-bg { width: 100%; height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 6px; border-radius: 3px; }
+.controls { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.filter-btn { font-size: 12px; padding: 4px 12px; border: 0.5px solid var(--color-border-secondary); border-radius: 20px; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.filter-btn.active { background: var(--color-background-info); color: var(--color-text-info); border-color: var(--color-border-info); }
+.summary-bar { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.stat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px 14px; flex: 1; min-width: 120px; }
+.stat-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.stat-val { font-size: 18px; font-weight: 500; }
+.table-scroll { max-height: 520px; overflow-y: auto; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); }
+.search-input { font-size: 13px; padding: 6px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); width: 180px; }
+.note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 10px; line-height: 1.6; }
+</style>
+
+<div style="padding: 0.5rem 0;">
+
+<div class="summary-bar">
+  <div class="stat"><div class="stat-label">Global total (tracked)</div><div class="stat-val">~12,000+</div></div>
+  <div class="stat"><div class="stat-label">US share</div><div class="stat-val">~45%</div></div>
+  <div class="stat"><div class="stat-label">Hyperscale facilities</div><div class="stat-val">~1,189</div></div>
+  <div class="stat"><div class="stat-label">US hyperscale share</div><div class="stat-val">~54%</div></div>
+</div>
+
+<div class="controls">
+  <input class="search-input" id="search" placeholder="Search country…" oninput="filterTable()" />
+  <button class="filter-btn active" onclick="setRegion('all',this)">All</button>
+  <button class="filter-btn" onclick="setRegion('North America',this)">North America</button>
+  <button class="filter-btn" onclick="setRegion('Europe',this)">Europe</button>
+  <button class="filter-btn" onclick="setRegion('Asia-Pacific',this)">Asia-Pacific</button>
+  <button class="filter-btn" onclick="setRegion('Latin America',this)">Latin America</button>
+  <button class="filter-btn" onclick="setRegion('Middle East & Africa',this)">ME & Africa</button>
+</div>
+
+<div class="table-scroll">
+<table class="dc-table" id="dc-table">
+  <thead>
+    <tr>
+      <th class="rank">#</th>
+      <th>Country</th>
+      <th class="num">Data centers</th>
+      <th class="num">% of global</th>
+      <th style="width:110px;">Share</th>
+    </tr>
+  </thead>
+  <tbody id="dc-tbody"></tbody>
+</table>
+</div>
+
+<p class="note">Sources: Cloudscene / Cargoson (Nov 2025); Synergy Research Group (Q1 2025). Global total ~12,000 tracked facilities used for % calculations. Countries below rank ~70 have fewer than 5 reported facilities — figures may undercount private/enterprise-only deployments. China figures likely undercounted due to limited third-party visibility into sovereign cloud and state-owned infrastructure.</p>
+</div>
+
+<script>
+const GLOBAL_TOTAL = 12000;
+const regions = {
+  'United States':'North America','Canada':'North America','Cayman Islands':'North America',
+  'Germany':'Europe','United Kingdom':'Europe','France':'Europe','Netherlands':'Europe',
+  'Russia':'Europe','Italy':'Europe','Poland':'Europe','Spain':'Europe','Switzerland':'Europe',
+  'Sweden':'Europe','Belgium':'Europe','Austria':'Europe','Ukraine':'Europe','Ireland':'Europe',
+  'Denmark':'Europe','Finland':'Europe','Norway':'Europe','Turkey':'Europe','Czech Republic':'Europe',
+  'Romania':'Europe','Latvia':'Europe','Bulgaria':'Europe','Luxembourg':'Europe','Portugal':'Europe',
+  'Lithuania':'Europe','Estonia':'Europe','Hungary':'Europe','Greece':'Europe','Slovakia':'Europe',
+  'Slovenia':'Europe','Serbia':'Europe','Croatia':'Europe','Belarus':'Europe','Moldova':'Europe',
+  'Cyprus':'Europe','Iceland':'Europe','Malta':'Europe','Georgia':'Europe','Liechtenstein':'Europe',
+  'Monaco':'Europe','Gibraltar':'Europe','Bosnia and Herzegovina':'Europe','Azerbaijan':'Europe',
+  'Australia':'Asia-Pacific','Japan':'Asia-Pacific','China':'Asia-Pacific','India':'Asia-Pacific',
+  'Singapore':'Asia-Pacific','South Korea':'Asia-Pacific','Hong Kong':'Asia-Pacific',
+  'New Zealand':'Asia-Pacific','Indonesia':'Asia-Pacific','Malaysia':'Asia-Pacific',
+  'Thailand':'Asia-Pacific','Vietnam':'Asia-Pacific','Philippines':'Asia-Pacific',
+  'Taiwan':'Asia-Pacific','Bangladesh':'Asia-Pacific','Pakistan':'Asia-Pacific',
+  'Sri Lanka':'Asia-Pacific','Kazakhstan':'Asia-Pacific','Uzbekistan':'Asia-Pacific',
+  'Brazil':'Latin America','Mexico':'Latin America','Argentina':'Latin America',
+  'Colombia':'Latin America','Chile':'Latin America','Peru':'Latin America',
+  'Ecuador':'Latin America','Costa Rica':'Latin America','Panama':'Latin America',
+  'Uruguay':'Latin America','Bolivia':'Latin America','Paraguay':'Latin America',
+  'South Africa':'Middle East & Africa','UAE':'Middle East & Africa',
+  'Saudi Arabia':'Middle East & Africa','Israel':'Middle East & Africa',
+  'Kenya':'Middle East & Africa','Nigeria':'Middle East & Africa','Egypt':'Middle East & Africa',
+  'Morocco':'Middle East & Africa','Qatar':'Middle East & Africa','Bahrain':'Middle East & Africa',
+  'Kuwait':'Middle East & Africa','Jordan':'Middle East & Africa','Ghana':'Middle East & Africa',
+  'Tanzania':'Middle East & Africa','Ethiopia':'Middle East & Africa',
+};
+
+const regionColors = {
+  'North America':'#185FA5','Europe':'#0F6E56','Asia-Pacific':'#993C1D',
+  'Latin America':'#854F0B','Middle East & Africa':'#533AB7',
+};
+const regionBg = {
+  'North America':'#E6F1FB','Europe':'#E1F5EE','Asia-Pacific':'#FAECE7',
+  'Latin America':'#FAEEDA','Middle East & Africa':'#EEEDFE',
+};
+
+const rawData = [
+  ['United States',5427],['Germany',529],['United Kingdom',523],['China',449],
+  ['Canada',337],['France',322],['Australia',314],['Netherlands',298],
+  ['Russia',251],['Japan',222],['India',183],['Italy',168],['Mexico',168],
+  ['Poland',144],['Spain',144],['Brazil',142],['Singapore',138],['Switzerland',121],
+  ['Sweden',95],['South Korea',92],['Hong Kong',88],['Belgium',81],
+  ['Austria',68],['Ukraine',58],['Ireland',55],['Denmark',50],['Finland',48],
+  ['Norway',47],['Argentina',46],['Turkey',35],['Czech Republic',34],
+  ['Romania',31],['UAE',30],['New Zealand',29],['Colombia',28],
+  ['South Africa',27],['Latvia',27],['Bulgaria',24],['Luxembourg',23],
+  ['Portugal',21],['Malaysia',21],['Chile',20],['Indonesia',19],
+  ['Thailand',18],['Lithuania',18],['Israel',17],['Estonia',16],
+  ['Hungary',15],['Greece',14],['Slovakia',14],['Taiwan',14],
+  ['Slovenia',13],['Saudi Arabia',13],['Philippines',12],['Serbia',12],
+  ['Croatia',9],['Belarus',9],['Vietnam',9],['Peru',9],
+  ['Nigeria',8],['Egypt',8],['Qatar',7],['Kenya',7],['Moldova',7],
+  ['Pakistan',7],['Cyprus',6],['Iceland',6],['Malta',6],
+  ['Ecuador',6],['Costa Rica',5],['Bahrain',5],['Morocco',5],
+  ['Bangladesh',5],['Kazakhstan',5],['Panama',4],['Jordan',4],
+  ['Georgia',4],['Uruguay',4],['Ghana',4],['Bolivia',3],
+  ['Sri Lanka',3],['Uzbekistan',3],['Kuwait',3],['Paraguay',3],
+  ['Tanzania',2],['Ethiopia',2],['Liechtenstein',2],['Monaco',2],
+  ['Gibraltar',2],['Bosnia and Herzegovina',2],['Azerbaijan',1],
+  ['Cayman Islands',3],['Iraq',2],['Myanmar',2],
+  ['Cambodia',2],['Nepal',1],
+];
+
+let activeRegion = 'all';
+
+function getRegion(country) {
+  return regions[country] || 'Other';
+}
+
+function barColor(country) {
+  const r = getRegion(country);
+  return regionColors[r] || '#888780';
+}
+
+function badgeBg(country) {
+  const r = getRegion(country);
+  return regionBg[r] || '#F1EFE8';
+}
+
+function renderTable() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const tbody = document.getElementById('dc-tbody');
+  tbody.innerHTML = '';
+  let rank = 0;
+  for (const [country, count] of rawData) {
+    const r = getRegion(country);
+    if (activeRegion !== 'all' && r !== activeRegion) continue;
+    if (search && !country.toLowerCase().includes(search)) continue;
+    rank++;
+    const pct = ((count / GLOBAL_TOTAL) * 100).toFixed(2);
+    const barW = Math.max(1, Math.round((count / 5427) * 100));
+    const color = barColor(country);
+    const bg = badgeBg(country);
+    const textColor = regionColors[r] || '#5F5E5A';
+    const tr = document.createElement('tr');
+    tr.dataset.region = r;
+    tr.innerHTML = `
+      <td class="rank num">${rank}</td>
+      <td>
+        <span class="country-name">${country}</span>
+        <span class="region-badge" style="background:${bg};color:${textColor};">${r}</span>
+      </td>
+      <td class="num">${count.toLocaleString()}</td>
+      <td class="num">${pct}%</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${color};"></div></div>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  if (rank === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="5" style="text-align:center;padding:24px;color:var(--color-text-secondary);">No results found</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function filterTable() { renderTable(); }
+
+function setRegion(r, btn) {
+  activeRegion = r;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+renderTable();
+</script>
