@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Global Data Center Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0c10; --bg2: #11141a; --bg3: #181c24; --bg4: #1e2330;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text1: #f0f2f7; --text2: #8b91a0; --text3: #565d70;
+    --accent: #4f8ef7; --accent2: #2de8b0; --accent3: #f7954f;
+    --purple: #9b7ef8; --red: #f75f5f; --grid: rgba(255,255,255,0.04);
+  }
+  html, body { background: var(--bg); color: var(--text1); font-family: 'Inter', sans-serif; font-size: 14px; min-height: 100vh; line-height: 1.6; }
+  .header { padding: 28px 40px 0; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(12px); }
+  .header-top { display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .header-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text1); }
+  .header-badge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent2); border: 1px solid rgba(45,232,176,0.25); padding: 2px 8px; border-radius: 3px; letter-spacing: 0.08em; }
+  .source-badge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; letter-spacing: 0.06em; }
+  .tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; color: var(--text3); padding: 10px 20px; border: none; background: transparent; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s, border-color 0.15s; letter-spacing: 0.01em; }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--text1); border-bottom-color: var(--accent); }
+  .content { display: none; padding: 32px 40px 48px; }
+  .content.active { display: block; }
+  .section-eyebrow { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+  .section-heading { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 600; color: var(--text1); margin-bottom: 4px; letter-spacing: -0.01em; }
+  .section-sub { font-size: 12px; color: var(--text2); margin-bottom: 24px; max-width: 720px; line-height: 1.6; }
+  .stat-row { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 130px; }
+  .stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 600; color: var(--text1); }
+  .stat-delta { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--red); margin-top: 3px; }
+  .legend { display: flex; gap: 20px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filter-btn { font-size: 11px; font-family: 'DM Mono', monospace; padding: 4px 12px; border: 1px solid var(--border2); border-radius: 20px; background: transparent; color: var(--text2); cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em; }
+  .filter-btn:hover { border-color: rgba(79,142,247,0.4); color: var(--text1); }
+  .filter-btn.active { background: rgba(79,142,247,0.12); color: var(--accent); border-color: rgba(79,142,247,0.4); }
+  .filter-btn.active-danger { background: rgba(247,95,95,0.1); color: var(--red); border-color: rgba(247,95,95,0.3); }
+  .search-input { font-size: 12px; font-family: 'Inter', sans-serif; padding: 5px 12px; border: 1px solid var(--border2); border-radius: 6px; background: var(--bg3); color: var(--text1); width: 200px; outline: none; transition: border-color 0.15s; }
+  .search-input:focus { border-color: rgba(79,142,247,0.4); }
+  .search-input::placeholder { color: var(--text3); }
+  .table-scroll { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; max-height: 540px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--bg4) transparent; }
+  .dc-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .dc-table th { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); padding: 10px 14px; text-align: left; position: sticky; top: 0; background: var(--bg3); z-index: 2; }
+  .dc-table th.num { text-align: right; }
+  .dc-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--text1); vertical-align: middle; }
+  .dc-table td.num { text-align: right; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+  .dc-table tr:hover td { background: var(--bg3); }
+  .dc-table .rank { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 11px; }
+  .dc-table .country-name { font-weight: 500; }
+  .region-badge { font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-left: 7px; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; }
+  .bar-wrap { width: 90px; display: inline-block; vertical-align: middle; }
+  .bar-bg { width: 100%; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 4px; border-radius: 2px; }
+  .chart-outer { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 20px 20px 16px; margin-bottom: 10px; overflow-x: auto; }
+  .chart-note { font-size: 10px; color: var(--text3); line-height: 1.7; margin-top: 10px; font-family: 'DM Mono', monospace; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 36px 0; }
+  .top-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .scale-badge { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); border: 1px solid var(--border); padding: 3px 10px; border-radius: 20px; letter-spacing: 0.04em; }
+  .change-up { color: var(--accent2); font-family: 'DM Mono', monospace; font-size: 10px; }
+  .change-down { color: var(--red); font-family: 'DM Mono', monospace; font-size: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <span class="header-title">Global Data Center Intelligence</span>
+    <span class="header-badge">2026 DATA</span>
+    <span class="source-badge">Source: Data Center Map · Apr 2026</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('countries-table',this)">Country Rankings</button>
+    <button class="tab" onclick="switchTab('countries-chart',this)">Top 30 Chart</button>
+    <button class="tab" onclick="switchTab('us-operators',this)">US Operators</button>
+    <button class="tab" onclick="switchTab('us-contractors',this)">US Contractors</button>
+  </div>
+</div>
+
+<!-- TAB 1: COUNTRY TABLE -->
+<div id="countries-table" class="content active">
+  <div class="section-eyebrow">Global overview</div>
+  <div class="section-heading">Top countries by data center count</div>
+  <p class="section-sub">Operational facilities as of April 2026. Primary source: Data Center Map (via Statista, Apr 14 2026) for top countries; supplemented by Seasia.co and Visual Capitalist (Mar 2026) for mid-tier rankings. Note: Data Center Map uses a stricter facility definition than Cloudscene — figures are lower than the Nov 2025 dataset but reflect the same relative rankings. Global total ~11,038 tracked facilities across 174 countries.</p>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Global tracked (2026)</div>
+      <div class="stat-val">~11,038</div>
+      <div class="stat-delta">▼ vs ~12,000 (2025 Cloudscene) — methodology diff</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">US facilities</div>
+      <div class="stat-val">4,184</div>
+      <div class="stat-delta">▼ from 5,427 — stricter source definition</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">US share</div>
+      <div class="stat-val">~38%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Hyperscale global (Q3 2025)</div>
+      <div class="stat-val">~1,297</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input class="search-input" id="t1-search" placeholder="Search country…" oninput="renderT1()"/>
+    <button class="filter-btn active" onclick="setT1Region('all',this)">All</button>
+    <button class="filter-btn" onclick="setT1Region('North America',this)">N. America</button>
+    <button class="filter-btn" onclick="setT1Region('Europe',this)">Europe</button>
+    <button class="filter-btn" onclick="setT1Region('Asia-Pacific',this)">Asia-Pacific</button>
+    <button class="filter-btn" onclick="setT1Region('Latin America',this)">Latin America</button>
+    <button class="filter-btn" onclick="setT1Region('Middle East & Africa',this)">ME & Africa</button>
+  </div>
+
+  <div class="table-scroll">
+    <table class="dc-table">
+      <thead>
+        <tr>
+          <th class="rank" style="width:36px;">#</th>
+          <th>Country</th>
+          <th class="num">Facilities</th>
+          <th class="num">% of global</th>
+          <th style="width:110px;">Share</th>
+        </tr>
+      </thead>
+      <tbody id="t1-tbody"></tbody>
+    </table>
+  </div>
+  <p class="chart-note">Primary: Data Center Map via Statista (Apr 14, 2026) — US 4,184 · UK 515 · Germany 514 · Supplemented by: Seasia.co (Mar 2026) · Visual Capitalist / Data Center Map (Mar 2026) · Programs.com (Mar 2026) · China figures remain likely undercounted — sovereign/state infrastructure not visible to Western trackers · % calculated against 11,038 global tracked facilities</p>
+</div>
+
+<!-- TAB 2: TOP 30 CHART -->
+<div id="countries-chart" class="content">
+  <div class="section-eyebrow">Country comparison</div>
+  <div class="section-heading">Top 30 countries — existing vs. planned</div>
+  <p class="section-sub">Existing: Data Center Map (Apr 2026). Planned estimates derived from Synergy Research Group pipeline data (Q1 2025), US figures from Axios/Data Center Map (~3,000 planned US facilities, Feb 2026), APAC pipeline from Cushman & Wakefield (H2 2025), and European market reports. Planned figures are directional estimates only.</p>
+
+  <div class="top-row">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7;"></div>Existing (operational, Apr 2026)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2de8b0;border:1px solid rgba(45,232,176,0.5);"></div>Planned / under construction (est.)</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="scale-badge" id="t2-scale-label">Full scale (incl. US)</span>
+      <button class="filter-btn" id="t2-us-toggle" onclick="toggleT2US()">Hide US</button>
+    </div>
+  </div>
+
+  <div class="chart-outer">
+    <div id="t2-wrap" style="width:100%;overflow-x:auto;">
+      <canvas id="t2chart" role="img" aria-label="Stacked bar chart top 30 countries existing vs planned data centers" style="height:420px;"></canvas>
+    </div>
+  </div>
+  <p class="chart-note">Existing: Data Center Map Apr 2026 · Planned: Synergy Research Group · Cushman & Wakefield · JLL · DevelopmentAid 2025–2026 · Planned figures are directional floor estimates only · China figures likely undercounted</p>
+</div>
+
+<!-- TAB 3: US OPERATORS -->
+<div id="us-operators" class="content">
+  <div class="section-eyebrow">United States · Operators</div>
+  <div class="section-heading">US data center operators — facilities &amp; pipeline</div>
+  <p class="section-sub">Hyperscalers [H] own and operate their own facilities. Colocation providers [C] own buildings leased to multiple tenants. Neoclouds [N] are AI-focused GPU cloud operators. Counts reflect distinct physical US facilities. Sources: ABI Research Top 25 US Data Center Companies (Feb 2026); company disclosures; Cloudscene.</p>
+
+  <div class="legend" style="margin-bottom:16px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#4f8ef7;"></div>Operational (US)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2de8b0;border:1px solid rgba(45,232,176,0.4);"></div>Planned / pipeline (est.)</div>
+  </div>
+
+  <div class="chart-outer">
+    <canvas id="t3chart" role="img" aria-label="Stacked bar chart US data center operators by facility count" style="width:100%;height:420px;"></canvas>
+  </div>
+  <p class="chart-note">Sources: ABI Research (Feb 2026) · Cloudscene · Company disclosures · AWS: 105 US sites · QTS: 33 US sites · CoreWeave: ~28 US sites · Planned figures estimated from disclosed investment pipelines and permit activity · [H] Hyperscaler · [C] Colocation · [N] Neocloud</p>
+</div>
+
+<!-- TAB 4: US CONTRACTORS -->
+<div id="us-contractors" class="content">
+  <div class="section-eyebrow">United States · Construction</div>
+  <div class="section-heading">US construction contractors — data center project volume</div>
+  <p class="section-sub">Ranked by estimated number of active US data center projects and disclosed contract activity. Reflects construction workload, not ownership. One contractor frequently works across multiple operators simultaneously. Project counts are estimates — firms do not publicly disclose full project rosters.</p>
+
+  <div class="legend" style="margin-bottom:16px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#9b7ef8;"></div>Active / recently completed (est.)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c8bdfb;border:1px solid rgba(155,126,248,0.4);"></div>Awarded / pipeline (est.)</div>
+  </div>
+
+  <div class="chart-outer">
+    <canvas id="t4chart" role="img" aria-label="Stacked bar chart US data center construction contractors by project count" style="width:100%;height:420px;"></canvas>
+  </div>
+  <p class="chart-note">Sources: BD+C Giants 400 Report (2025) · ENR Top 400 Contractors (2025) — HITT #1 Telecom/DC · Turner #1 overall $29.2B revenue 2025 · Mordor Intelligence US DC Construction Market (2025) · For permit-level data: ConstructConnect · Dodge Data & Analytics · County permit portals (Loudoun Co. VA · Maricopa AZ · Dallas TX)</p>
+</div>
+
+<script>
+/* ── SHARED ── */
+const C = {
+  blue:'#4f8ef7', green:'#2de8b0', greenBorder:'rgba(45,232,176,0.5)',
+  purple:'#9b7ef8', purpleLight:'#c8bdfb', purpleBorder:'rgba(155,126,248,0.4)',
+  grid:'rgba(255,255,255,0.05)', label:'#565d70',
+  ttBg:'#181c24', ttBorder:'rgba(255,255,255,0.1)', ttTitle:'#f0f2f7', ttBody:'#8b91a0',
+};
+const axDef = () => ({
+  x:{ stacked:true, ticks:{ color:C.label, font:{size:10,family:"'DM Mono',monospace"}, maxRotation:35, minRotation:25, autoSkip:false }, grid:{display:false}, border:{color:'rgba(255,255,255,0.06)'} },
+  y:{ stacked:true, ticks:{ color:C.label, font:{size:10,family:"'DM Mono',monospace"}, callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v }, grid:{color:C.grid}, border:{display:false} }
+});
+const ttDef = () => ({ backgroundColor:C.ttBg, borderColor:C.ttBorder, borderWidth:1, titleColor:C.ttTitle, bodyColor:C.ttBody, padding:10, titleFont:{family:"'Syne',sans-serif",size:12}, bodyFont:{family:"'DM Mono',monospace",size:11} });
+
+function switchTab(id,btn){
+  document.querySelectorAll('.content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='countries-chart'&&!t2built)buildT2();
+  if(id==='us-operators'&&!t3built)buildT3();
+  if(id==='us-contractors'&&!t4built)buildT4();
+}
+
+/* ── TAB 1: COUNTRY TABLE ── */
+/* 2026 Data: primary Data Center Map Apr 14 2026 (Statista) for top entries;
+   supplemented by Seasia.co Mar 2026, Visual Capitalist Mar 2026, Programs.com Mar 2026 */
+const GLOBAL_TOTAL = 11038;
+const regionColors = {
+  'North America':       {text:'#4f8ef7',bg:'rgba(79,142,247,0.12)'},
+  'Europe':              {text:'#2de8b0',bg:'rgba(45,232,176,0.10)'},
+  'Asia-Pacific':        {text:'#f7954f',bg:'rgba(247,149,79,0.12)'},
+  'Latin America':       {text:'#f7c94f',bg:'rgba(247,201,79,0.12)'},
+  'Middle East & Africa':{text:'#9b7ef8',bg:'rgba(155,126,248,0.12)'},
+  'Other':               {text:'#8b91a0',bg:'rgba(139,145,160,0.1)'},
+};
+const barColors = {
+  'North America':'#4f8ef7','Europe':'#2de8b0','Asia-Pacific':'#f7954f',
+  'Latin America':'#f7c94f','Middle East & Africa':'#9b7ef8','Other':'#565d70',
+};
+const regionMap = {
+  'United States':'North America','Canada':'North America','Cayman Islands':'North America',
+  'Germany':'Europe','United Kingdom':'Europe','France':'Europe','Netherlands':'Europe',
+  'Russia':'Europe','Italy':'Europe','Poland':'Europe','Spain':'Europe','Switzerland':'Europe',
+  'Sweden':'Europe','Belgium':'Europe','Austria':'Europe','Ukraine':'Europe','Ireland':'Europe',
+  'Denmark':'Europe','Finland':'Europe','Norway':'Europe','Turkey':'Europe','Czech Republic':'Europe',
+  'Romania':'Europe','Latvia':'Europe','Bulgaria':'Europe','Luxembourg':'Europe','Portugal':'Europe',
+  'Lithuania':'Europe','Estonia':'Europe','Hungary':'Europe','Greece':'Europe','Slovakia':'Europe',
+  'Slovenia':'Europe','Serbia':'Europe','Croatia':'Europe','Belarus':'Europe','Moldova':'Europe',
+  'Cyprus':'Europe','Iceland':'Europe','Malta':'Europe','Georgia':'Europe','Liechtenstein':'Europe',
+  'Monaco':'Europe','Gibraltar':'Europe','Bosnia and Herzegovina':'Europe','Azerbaijan':'Europe',
+  'Australia':'Asia-Pacific','Japan':'Asia-Pacific','China':'Asia-Pacific','India':'Asia-Pacific',
+  'Singapore':'Asia-Pacific','South Korea':'Asia-Pacific','Hong Kong':'Asia-Pacific',
+  'New Zealand':'Asia-Pacific','Indonesia':'Asia-Pacific','Malaysia':'Asia-Pacific',
+  'Thailand':'Asia-Pacific','Vietnam':'Asia-Pacific','Philippines':'Asia-Pacific',
+  'Taiwan':'Asia-Pacific','Bangladesh':'Asia-Pacific','Pakistan':'Asia-Pacific',
+  'Sri Lanka':'Asia-Pacific','Kazakhstan':'Asia-Pacific','Uzbekistan':'Asia-Pacific',
+  'Cambodia':'Asia-Pacific','Myanmar':'Asia-Pacific','Nepal':'Asia-Pacific',
+  'Brazil':'Latin America','Mexico':'Latin America','Argentina':'Latin America',
+  'Colombia':'Latin America','Chile':'Latin America','Peru':'Latin America',
+  'Ecuador':'Latin America','Costa Rica':'Latin America','Panama':'Latin America',
+  'Uruguay':'Latin America','Bolivia':'Latin America','Paraguay':'Latin America',
+  'South Africa':'Middle East & Africa','UAE':'Middle East & Africa',
+  'Saudi Arabia':'Middle East & Africa','Israel':'Middle East & Africa',
+  'Kenya':'Middle East & Africa','Nigeria':'Middle East & Africa','Egypt':'Middle East & Africa',
+  'Morocco':'Middle East & Africa','Qatar':'Middle East & Africa','Bahrain':'Middle East & Africa',
+  'Kuwait':'Middle East & Africa','Jordan':'Middle East & Africa','Ghana':'Middle East & Africa',
+  'Tanzania':'Middle East & Africa','Ethiopia':'Middle East & Africa','Iraq':'Middle East & Africa',
+};
+
+/* Updated figures — Data Center Map Apr 2026 primary, Seasia/VisualCapitalist Mar 2026 secondary */
+const countryData = [
+  ['United States',4184],['United Kingdom',515],['Germany',514],['China',369],
+  ['France',346],['Canada',288],['India',277],['Australia',268],['Japan',255],
+  ['Netherlands',192],['Indonesia',185],['Brazil',199],['Russia',181],
+  ['Italy',165],['Mexico',155],['Spain',148],['Singapore',132],['Switzerland',118],
+  ['South Korea',110],['Poland',108],['Sweden',92],['Belgium',79],['Hong Kong',85],
+  ['Austria',65],['Ireland',62],['Norway',55],['Denmark',52],['Ukraine',50],
+  ['Finland',47],['Malaysia',44],['Czech Republic',38],['Romania',33],
+  ['UAE',32],['Argentina',30],['New Zealand',29],['Portugal',25],['Israel',24],
+  ['Colombia',24],['South Africa',24],['Latvia',22],['Thailand',20],
+  ['Bulgaria',20],['Luxembourg',19],['Chile',18],['Lithuania',17],
+  ['Vietnam',16],['Philippines',15],['Estonia',14],['Hungary',14],
+  ['Taiwan',14],['Slovakia',13],['Saudi Arabia',13],['Greece',12],
+  ['Slovenia',11],['Serbia',11],['Turkey',10],['Croatia',9],
+  ['Belarus',8],['Peru',8],['Nigeria',8],['Egypt',8],['Qatar',7],
+  ['Kenya',7],['Pakistan',7],['Moldova',6],['Cyprus',6],['Iceland',6],
+  ['Malta',6],['Ecuador',6],['Costa Rica',5],['Bahrain',5],['Morocco',5],
+  ['Bangladesh',5],['Kazakhstan',5],['Panama',4],['Jordan',4],
+  ['Georgia',4],['Uruguay',4],['Ghana',4],['Bolivia',3],
+  ['Sri Lanka',3],['Uzbekistan',3],['Kuwait',3],['Paraguay',3],
+  ['Cayman Islands',3],['Tanzania',2],['Ethiopia',2],['Iraq',2],
+  ['Cambodia',2],['Myanmar',2],['Liechtenstein',2],['Monaco',2],
+  ['Gibraltar',2],['Bosnia and Herzegovina',2],['Azerbaijan',1],['Nepal',1],
+];
+
+let t1Region='all';
+function getRegion(c){ return regionMap[c]||'Other'; }
+function setT1Region(r,btn){
+  t1Region=r;
+  document.querySelectorAll('#countries-table .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderT1();
+}
+function renderT1(){
+  const search=document.getElementById('t1-search').value.toLowerCase();
+  const tbody=document.getElementById('t1-tbody');
+  tbody.innerHTML='';
+  let rank=0;
+  for(const [country,count] of countryData){
+    const r=getRegion(country);
+    if(t1Region!=='all'&&r!==t1Region)continue;
+    if(search&&!country.toLowerCase().includes(search))continue;
+    rank++;
+    const pct=((count/GLOBAL_TOTAL)*100).toFixed(2);
+    const barW=Math.max(1,Math.round((count/4184)*100));
+    const rc=regionColors[r]||regionColors['Other'];
+    const bc=barColors[r]||'#565d70';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="num rank">${rank}</td>
+      <td><span class="country-name">${country}</span><span class="region-badge" style="background:${rc.bg};color:${rc.text};">${r}</span></td>
+      <td class="num">${count.toLocaleString()}</td>
+      <td class="num">${pct}%</td>
+      <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${bc};"></div></div></div></td>`;
+    tbody.appendChild(tr);
+  }
+  if(rank===0){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">No results</td>`;
+    tbody.appendChild(tr);
+  }
+}
+renderT1();
+
+/* ── TAB 2: TOP 30 CHART ── */
+const t2Countries=['United States','United Kingdom','Germany','China','France','Canada','India','Australia','Japan','Netherlands','Brazil','Indonesia','Russia','Italy','Mexico','Spain','Singapore','Switzerland','South Korea','Poland','Sweden','Hong Kong','Belgium','Austria','Ireland','Norway','Denmark','Ukraine','Finland','Malaysia'];
+const t2Existing= [4184,515,514,369,346,288,277,268,255,192,199,185,181,165,155,148,132,118,110,108,92,85,79,65,62,55,52,50,47,44];
+const t2Planned=  [3000,145,110,200,95,85,160,120,90,75,65,60,30,40,55,70,80,28,55,38,45,30,22,18,30,20,18,12,35,28];
+
+let t2built=false,t2showUS=true,t2chart=null;
+function buildT2(){ t2built=true; renderT2(t2Countries,t2Existing,t2Planned); }
+function renderT2(labels,existing,planned){
+  const wrap=document.getElementById('t2-wrap');
+  const old=document.getElementById('t2chart');
+  if(old)old.remove();
+  const canvas=document.createElement('canvas');
+  canvas.id='t2chart';
+  canvas.setAttribute('role','img');
+  canvas.setAttribute('aria-label','Top 30 countries data centers existing vs planned');
+  const w=Math.max(700,labels.length*36+80);
+  canvas.style.width=w+'px'; canvas.style.height='420px';
+  wrap.style.overflowX=w>wrap.clientWidth?'auto':'hidden';
+  wrap.appendChild(canvas);
+  if(t2chart){t2chart.destroy();t2chart=null;}
+  t2chart=new Chart(canvas,{
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'Existing (operational)',data:existing,backgroundColor:C.blue,borderWidth:0,borderRadius:{topLeft:0,topRight:0,bottomLeft:3,bottomRight:3},borderSkipped:'bottom'},
+      {label:'Planned / under construction (est.)',data:planned,backgroundColor:C.green,borderColor:C.greenBorder,borderWidth:0.5,borderRadius:{topLeft:3,topRight:3,bottomLeft:0,bottomRight:0},borderSkipped:'bottom'}
+    ]},
+    options:{
+      responsive:false,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttDef(),callbacks:{
+        label:ctx=>{const v=ctx.parsed.y,total=existing[ctx.dataIndex]+planned[ctx.dataIndex],pct=((v/total)*100).toFixed(0),tag=ctx.datasetIndex===1?' (est.)':'';return ` ${ctx.dataset.label}: ${v.toLocaleString()}${tag} — ${pct}%`;},
+        afterBody:items=>{const i=items[0].dataIndex,total=existing[i]+planned[i],g=Math.round((planned[i]/existing[i])*100);return['',` Total incl. planned: ${total.toLocaleString()}`,` Pipeline growth: +${g}%`];}
+      }}},
+      scales:axDef()
+    }
+  });
+}
+function toggleT2US(){
+  t2showUS=!t2showUS;
+  const btn=document.getElementById('t2-us-toggle'),lbl=document.getElementById('t2-scale-label');
+  if(t2showUS){btn.textContent='Hide US';btn.classList.remove('active-danger');lbl.textContent='Full scale (incl. US)';renderT2(t2Countries,t2Existing,t2Planned);}
+  else{btn.textContent='Show US';btn.classList.add('active-danger');lbl.textContent='Excl. US — rest of world detail';renderT2(t2Countries.slice(1),t2Existing.slice(1),t2Planned.slice(1));}
+}
+
+/* ── TAB 3: US OPERATORS ── */
+const t3Labels=['AWS [H]','Equinix [C]','Digital\nRealty [C]','Microsoft\nAzure [H]','NTT Global [C]','Meta [H]','Google\nCloud [H]','CyrusOne [C]','QTS [C]','CoreWeave [N]','Iron\nMountain [C]','Vantage\nDC [C]','Oracle\nCloud [H]','Flexential [C]','CoreSite [C]'];
+const t3Ops= [105,90,75,60,35,24,35,30,33,28,22,18,20,14,25];
+const t3Plan=[80,30,28,55,12,18,25,18,22,35,10,20,30,12,8];
+let t3built=false;
+function buildT3(){
+  t3built=true;
+  new Chart(document.getElementById('t3chart'),{
+    type:'bar',
+    data:{labels:t3Labels,datasets:[
+      {label:'Operational (US)',data:t3Ops,backgroundColor:C.blue,borderWidth:0,borderRadius:{topLeft:0,topRight:0,bottomLeft:3,bottomRight:3},borderSkipped:'bottom'},
+      {label:'Planned / pipeline (est.)',data:t3Plan,backgroundColor:C.green,borderColor:C.greenBorder,borderWidth:0.5,borderRadius:{topLeft:3,topRight:3,bottomLeft:0,bottomRight:0},borderSkipped:'bottom'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttDef(),callbacks:{
+        title:items=>items[0].label.replace('\n',' '),
+        label:ctx=>{const v=ctx.parsed.y,total=t3Ops[ctx.dataIndex]+t3Plan[ctx.dataIndex],pct=((v/total)*100).toFixed(0),tag=ctx.datasetIndex===1?' (est.)':'';return ` ${ctx.dataset.label}: ${v}${tag} — ${pct}%`;},
+        afterBody:items=>{const i=items[0].dataIndex,total=t3Ops[i]+t3Plan[i],g=Math.round((t3Plan[i]/t3Ops[i])*100);return['',` Total incl. pipeline: ${total}`,` Pipeline growth: +${g}%`];}
+      }}},
+      scales:axDef()}
+  });
+}
+
+/* ── TAB 4: US CONTRACTORS ── */
+const t4Labels=['HITT\nContracting','Holder\nConstruction','DPR\nConstruction','Turner\nConstruction','Clayco','Whiting-\nTurner','Mortenson','Fortis\nConstruction','JE Dunn','AECOM','Jacobs\nSolutions','Fluor','Skanska\nUSA','PCL\nConstructors','Balfour\nBeatty US'];
+const t4Active=  [95,85,88,78,62,68,65,44,48,52,45,32,28,25,20];
+const t4Pipeline=[55,48,58,68,38,32,48,28,25,42,30,25,18,16,13];
+let t4built=false;
+function buildT4(){
+  t4built=true;
+  new Chart(document.getElementById('t4chart'),{
+    type:'bar',
+    data:{labels:t4Labels,datasets:[
+      {label:'Active / recently completed',data:t4Active,backgroundColor:C.purple,borderWidth:0,borderRadius:{topLeft:0,topRight:0,bottomLeft:3,bottomRight:3},borderSkipped:'bottom'},
+      {label:'Awarded / pipeline (est.)',data:t4Pipeline,backgroundColor:C.purpleLight,borderColor:C.purpleBorder,borderWidth:0.5,borderRadius:{topLeft:3,topRight:3,bottomLeft:0,bottomRight:0},borderSkipped:'bottom'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{...ttDef(),callbacks:{
+        title:items=>items[0].label.replace('\n',' '),
+        label:ctx=>{const v=ctx.parsed.y,total=t4Active[ctx.dataIndex]+t4Pipeline[ctx.dataIndex],pct=((v/total)*100).toFixed(0),tag=ctx.datasetIndex===1?' (est.)':'';return ` ${ctx.dataset.label}: ${v}${tag} — ${pct}%`;},
+        afterBody:items=>{const i=items[0].dataIndex,total=t4Active[i]+t4Pipeline[i],g=Math.round((t4Pipeline[i]/t4Active[i])*100);return['',` Total portfolio: ${total}`,` Pipeline ratio: +${g}%`];}
+      }}},
+      scales:axDef()}
+  });
+}
+</script>
+</body>
+</html>
