@@ -136,6 +136,8 @@ body{display:flex;flex-direction:column}
     <button class="tab" onclick="sw('top30-chart',this)">Top 30 Chart</button>
     <button class="tab" onclick="sw('operators',this)">Global Operators</button>
     <button class="tab" onclick="sw('contractors',this)">US Contractors</button>
+    <button class="tab" onclick="sw('contractors',this)">US Contractors</button>
+    <button class="tab" onclick="sw('neoclouds',this)">NeoClouds</button>
   </div>
 </div>
 
@@ -282,6 +284,24 @@ body{display:flex;flex-direction:column}
     </table>
   </div>
   <p class="note">US only · Sources: ENR Top 400 Contractors (2025) — HITT #1 Telecom/DC · BD+C Giants 400 (2025) · Turner #1 overall $29.2B revenue 2025 · Project type breakdown estimated from disclosed contract announcements — treat as directional · For permit-level data: ConstructConnect · Dodge Data & Analytics</p>
+</div>
+<!-- ════════ NEOCLOUDS ════════ -->
+<div id="neoclouds" class="pane">
+  <div class="op-tbl-wrap">
+    <table class="dc-tbl">
+      <thead><tr>
+        <th style="width:28px">#</th>
+        <th>NeoCloud</th>
+        <th class="r">Active MW</th>
+        <th class="r">Contracted/Pipeline MW</th>
+        <th>Primary locations</th>
+        <th>Known tenants</th>
+        <th style="width:80px">Scale</th>
+      </tr></thead>
+      <tbody id="neo-body"></tbody>
+    </table>
+  </div>
+  <p class="note">MW-based, not facility-count — NeoClouds report capacity, not building counts, and third-party facility trackers disagree 10–15x for the same company · Figures from company disclosures, SEC filings (IREN 10-K) and press reporting at different dates (Q4 2025–Q3 2026), not one consistent snapshot · Vultr and similar colo-tenant NeoClouds excluded — their capacity sits inside Equinix/Digital Realty facilities already counted on the Operators page · Tenant column is qualitative, not MW-attributed</p>
 </div>
 
 </div><!-- end .main -->
